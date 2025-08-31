@@ -62,6 +62,10 @@ async def start_handler(event):
 
 @client.on(events.NewMessage)
 async def message_handler(event):
+    # Ignore commands (like /upload_vcf, /start, etc.)
+    if event.raw_text.startswith("/"):
+        return
+
     chat_id = event.chat_id
     if chat_id not in user_states:
         return

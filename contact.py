@@ -11,11 +11,15 @@ from telethon.tl.functions.channels import InviteToChannelRequest
 from telethon.errors import PeerFloodError, UserPrivacyRestrictedError
 
 # Your credentials
-api_id = YOUR_API_ID  # Integer
-api_hash = 'YOUR_API_HASH'  # String
-phone = '+YOUR_PHONE_NUMBER'  # e.g., '+1234567890'
 session_name = 'userbot_session'  # Session file name
 contacts_file = 'stored_contacts.json'  # Persistent storage
+api_id = os.getenv('API_ID')
+api_hash = os.getenv('API_HASH')
+phone = os.getenv('PHONE')
+
+# Check if credentials are set
+if not all([api_id, api_hash, phone]):
+    raise ValueError("Please set API_ID, API_HASH, and PHONE environment variables.")
 
 # Create the client
 client = TelegramClient(session_name, api_id, api_hash)

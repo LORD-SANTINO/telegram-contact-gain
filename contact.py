@@ -192,7 +192,7 @@ async def process_and_store_vcf(event, vcf_path):
 
     new_stored_users = []
     failed_contacts = []
-    batch_size = 40
+    batch_size = 30
     pause_between = 10
 
     for i in range(0, len(contacts), batch_size):

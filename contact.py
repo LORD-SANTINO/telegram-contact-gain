@@ -74,6 +74,14 @@ async def addmembers_handler(event):
     user_states[chat_id] = {'step': 'channel_link'}
     await event.reply("Please drop your Telegram channel link (e.g., https://t.me/channelname or @channelname).")
 
+@client.on(events.NewMessage(pattern='/stop'))
+async def stop_handler(event):
+    chat_id = event.chat_id
+    if chat_id in user_states:
+        del user_states[chat_id]
+        await event.reply("All ongoing requests have been stopped.")
+    else:
+        await event.reply("No active requests to stop.")
 
 @client.on(events.NewMessage)
 async def message_handler(event):

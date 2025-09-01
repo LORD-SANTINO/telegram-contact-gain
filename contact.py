@@ -6,14 +6,14 @@ import vobject
 import json
 from telethon import TelegramClient, events
 from telethon.tl.functions.contacts import ImportContactsRequest
-from telethon.tl.types import InputPhoneContact, InputPeerChannel, InputUser
+from telethon.tl.types import InputPhoneContact, InputUser
 from telethon.tl.functions.channels import InviteToChannelRequest
 from telethon.errors import PeerFloodError, UserPrivacyRestrictedError, FloodWaitError
 
 # Your credentials
 session_name = 'userbot_session'  # Session file name
 contacts_file = 'stored_contacts.json'  # Persistent storage
-failed_file = 'failed_contacts.json'    # failed contacts storage
+failed_file = 'failed_contacts.json'    # Failed contacts storage
 api_id = os.getenv('API_ID')
 api_hash = os.getenv('API_HASH')
 phone = os.getenv('PHONE')
@@ -62,6 +62,14 @@ async def start_handler(event):
         me = await client.get_me()
         owner_id = me.id
 
+    await event.reply(
+        "Welcome! To add members to a channel, please use the /addmembers command.\n"
+        "Admin can use /upload_vcf to upload contacts."
+    )
+
+
+@client.on(events.NewMessage(pattern='/addmembers'))
+async def addmembers_handler(event):
     chat_id = event.chat_id
     user_states[chat_id] = {'step': 'channel_link'}
     await event.reply("Please drop your Telegram channel link (e.g., https://t.me/channelname or @channelname).")
@@ -70,6 +78,7 @@ async def start_handler(event):
 @client.on(events.NewMessage)
 async def message_handler(event):
     if event.raw_text.startswith("/"):
+        # Ignore commands here except handled separately
         return
 
     chat_id = event.chat_id
@@ -131,6 +140,11 @@ async def add_members_from_stored(event, state):
 
 @client.on(events.NewMessage(pattern='/upload_vcf'))
 async def upload_vcf_handler(event):
+    global owner_id
+    if owner_id is None:
+        me = await client.get_me()
+        owner_id = me.id
+
     if event.sender_id != owner_id:
         await event.reply("You are not authorized to upload VCF.")
         return
@@ -141,7 +155,8 @@ async def upload_vcf_handler(event):
 async def receive_vcf(event):
     if event.sender_id != owner_id or not event.document:
         return
-    if event.document.mime_type == 'text/vcard' or event.document.attributes[0].file_name.endswith('.vcf'):
+    if (event.document.mime_type == 'text/vcard' or
+            (event.document.attributes and event.document.attributes[0].file_name.endswith('.vcf'))):
         vcf_path = await event.message.download_media(file='temp.vcf')
         await process_and_store_vcf(event, vcf_path)
     else:
@@ -173,7 +188,7 @@ async def process_and_store_vcf(event, vcf_path):
     pause_between = 10
 
     for i in range(0, len(contacts), batch_size):
-        batch = contacts[i:i+batch_size]
+        batch = contacts[i:i + batch_size]
         phone_contacts = [
             InputPhoneContact(
                 client_id=random.randint(0, 999999),
@@ -194,7 +209,7 @@ async def process_and_store_vcf(event, vcf_path):
                 })
 
             save_stored_users()
-            await event.reply(f"✅ Imported batch {i//batch_size + 1}")
+            await event.reply(f"✅ Imported batch {i // batch_size + 1}")
             await asyncio.sleep(pause_between)
 
         except FloodWaitError as e:
@@ -204,7 +219,7 @@ async def process_and_store_vcf(event, vcf_path):
         except Exception as e:
             failed_contacts.extend(batch)
             save_failed_contacts(failed_contacts)
-            print(f"❌ Error importing batch {i//batch_size + 1}: {str(e)}")
+            print(f"❌ Error importing batch {i // batch_size + 1}: {str(e)}")
 
     if new_stored_users:
         stored_users.extend(new_stored_users)
@@ -219,10 +234,11 @@ async def process_and_store_vcf(event, vcf_path):
 async def main():
     await client.start(phone=phone)
     load_stored_users()
-    print("Userbot is running. As admin, message /upload_vcf to upload VCF. Users can use /start.")
+    print("Userbot is running. As admin, message /upload_vcf to upload VCF. Users can use /addmembers.")
     client.add_event_handler(receive_vcf, events.NewMessage())
     await client.run_until_disconnected()
 
 
 if __name__ == '__main__':
     client.loop.run_until_complete(main())
+        
